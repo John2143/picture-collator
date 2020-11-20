@@ -4,6 +4,16 @@ use std::{collections::HashMap, io::Result, path::PathBuf};
 struct Gallery<'a> {
     name: &'a str,
     pics: Vec<&'a str>,
+    folder: Option<&'a str>,
+}
+
+///slice the line if it has a pipe: thats the folder to use
+fn maybe_slice_line(line: &str) -> (&str, Option<&str>) {
+    if let Some(loc) = line.find("|") {
+        (&line[..loc], Some(&line[loc+1..]))
+    } else {
+        (line, None)
+    }
 }
 
 fn read_data(data: &str) -> Vec<Gallery<'_>> {
@@ -17,8 +27,9 @@ fn read_data(data: &str) -> Vec<Gallery<'_>> {
                 gal.pics.push(line);
             }
         } else {
+            let (name, folder) = maybe_slice_line(&line);
             current_gallery = Some(Gallery {
-                name: line,
+                name, folder,
                 pics: vec![],
             });
         }
@@ -58,7 +69,7 @@ fn main() -> Result<()> {
     let data = std::fs::read_to_string("./data.txt").unwrap();
 
     let galleries = read_data(&data);
-    let pics_dir = "./pics/";
+    let pics_dir = "./picsc/";
     let out_dir = "./dist/";
     let dirs = read_folders(&pics_dir);
 
@@ -66,7 +77,13 @@ fn main() -> Result<()> {
         //this could be done in one filter map but whatever
         let dirsthatwork = dirs
             .iter()
-            .filter(|(_folder, files)| {
+            .filter(|(folder, files)| {
+                if let Some(reqfolder) = gallery.folder {
+                    if !folder.contains(reqfolder) {
+                        return false;
+                    }
+                }
+
                 for picnumber in &gallery.pics {
                     let ok = files.iter().any(|filename| filename.contains(picnumber));
                     if !ok {
@@ -77,12 +94,33 @@ fn main() -> Result<()> {
             })
             .collect::<Vec<_>>();
 
+        enum PicSet {
+            Missing,
+            Ok,
+            Multiple,
+        }
+
+        let picset = match dirsthatwork.len() {
+            0 => PicSet::Missing,
+            1 => PicSet::Ok,
+            _ => PicSet::Multiple,
+        };
+
+        match picset {
+            PicSet::Missing  => println!("Missing possible structure... {}", gallery.name),
+            PicSet::Ok       => println!("Ok... {}", gallery.name),
+            PicSet::Multiple => println!("Multiple... {}", gallery.name),
+        };
+
         for (folder, files) in dirsthatwork {
             let mut folder_path = PathBuf::new();
             folder_path.push(out_dir);
             folder_path.push(gallery.name);
-            folder_path.push(folder);
-            println!("adding {} as {:#?}", gallery.name, &folder_path);
+            //if multiple match, use folder to disambiguate
+            if let PicSet::Multiple = picset {
+                folder_path.push(folder);
+            }
+            //println!("adding {} as {:#?}", gallery.name, &folder_path);
             std::fs::create_dir_all(&folder_path).unwrap();
 
             let mut foldersrc = PathBuf::new();
