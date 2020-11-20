@@ -63,6 +63,7 @@ fn main() -> Result<()> {
     let dirs = read_folders(&pics_dir);
 
     for gallery in galleries {
+        //this could be done in one filter map but whatever
         let dirsthatwork = dirs
             .iter()
             .filter(|(_folder, files)| {
@@ -75,8 +76,6 @@ fn main() -> Result<()> {
                 true
             })
             .collect::<Vec<_>>();
-
-        //let dirnames = dirsthatwork.iter().map(|x| x.0).collect::<Vec<_>>();
 
         for (folder, files) in dirsthatwork {
             let mut folder_path = PathBuf::new();
