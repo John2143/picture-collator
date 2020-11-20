@@ -30,7 +30,9 @@ fn main() -> Result<()> {
         galleries.push(x);
     }
 
-    dbg!(&galleries);
+    for gallery in galleries {
+        dbg!(&gallery);
+    }
 
     Ok(())
 }
